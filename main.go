@@ -66,8 +66,21 @@ func main() {
 	// HTMLテンプレートを解析
 	tmpl := template.Must(template.New("index").Parse(htmlTemplate))
 
-	// メインページのハンドラー（GETリクエスト用）
+	// メインページと短縮URLアクセスのハンドラー
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// 短縮URLへのアクセス処理
+		path := strings.TrimPrefix(r.URL.Path, "/") // URLから先頭の/を除去
+		if path != "" {
+			// 短縮URLが存在する場合は元のURLにリダイレクト
+			if originalURL, exists := urlMap[path]; exists {
+				http.Redirect(w, r, originalURL, http.StatusMovedPermanently)
+				return
+			}
+			http.Error(w, "URLが見つかりません", http.StatusNotFound)
+			return
+		}
+
+		// メインページの表示（GETリクエストの場合）
 		if r.Method == "GET" {
 			data := PageData{}    // 空のデータを作成
 			tmpl.Execute(w, data) // テンプレートを実行してHTMLを生成
@@ -97,19 +110,6 @@ func main() {
 				ShortURL: fmt.Sprintf("http://localhost:8080/%s", shortURL),
 			}
 			tmpl.Execute(w, data)
-		}
-	})
-
-	// 短縮URLへのアクセス処理
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/") // URLから先頭の/を除去
-		if path != "" {
-			// 短縮URLが存在する場合は元のURLにリダイレクト
-			if originalURL, exists := urlMap[path]; exists {
-				http.Redirect(w, r, originalURL, http.StatusMovedPermanently)
-				return
-			}
-			http.Error(w, "URLが見つかりません", http.StatusNotFound)
 		}
 	})
 
